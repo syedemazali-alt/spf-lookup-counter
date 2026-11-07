@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPF Lookup Counter: fix "too many DNS lookups" in SPF</title>
+<meta name="description" content="Free open-source tool that counts the DNS lookups in your SPF record (limit 10) and shows which include costs how many, so you can fix SPF permerror.">
+<link rel="canonical" href="https://syedemazali-alt.github.io/spf-lookup-counter/">
+<meta name="color-scheme" content="light dark">
+<style>
+  :root { --bg:#ffffff; --fg:#1b1f24; --muted:#57606a; --line:#d0d7de; --code:#f6f8fa; --brand:#0b6bcb; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1; --line:#30363d; --code:#161b22; --brand:#4aa3ff; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
+  h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 8px; }
+  h2 { font-size: 1.3rem; margin: 36px 0 8px; }
+  p.lede { color: var(--muted); font-size: 1.1rem; margin-top: 0; }
+  a { color: var(--brand); }
+  pre, code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .9rem; }
+  pre { background: var(--code); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow-x: auto; }
+  code { background: var(--code); padding: 1px 5px; border-radius: 4px; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+  th, td { text-align: left; border-bottom: 1px solid var(--line); padding: 8px 6px; vertical-align: top; }
+  ul { padding-left: 20px; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>SPF Lookup Counter</h1>
+  <p class="lede">Count the DNS lookups your SPF record needs, and see which include costs how many. Free and open source (MIT).</p>
+
+  <pre><code>npx spf-lookup-counter example.com</code></pre>
+
+  <h2>Why the number matters</h2>
+  <p>SPF allows at most <strong>10 DNS lookups</strong> and <strong>2 void lookups</strong> per check (<a href="https://www.rfc-editor.org/rfc/rfc7208#section-4.6.4">RFC 7208 §4.6.4</a>). Go over either limit and receiving mail servers return <code>permerror</code>. SPF then fails for all your mail, and DMARC can no longer pass on SPF.</p>
+  <p>It usually happens without anyone changing your record: a provider you <code>include:</code> adds another nested include, and your total goes from 9 to 11.</p>
+
+  <h2>What you get</h2>
+  <pre><code>$ npx spf-lookup-counter primedevforce.com
+primedevforce.com
+  v=spf1 include:secureserver.net -all
+
+DNS lookups:  3 of 10 allowed
+Void lookups: 0 of 2 allowed
+
+Term                                             Lookups
+include:secureserver.net                           3
+  include:spf-0.secureserver.net                   2
+    include:spf.protection.outlook.com             1</code></pre>
+  <ul>
+    <li><strong>Exact counts</strong>, not just "more than 10", so you know how far over you are.</li>
+    <li><strong>A tree of every include</strong> with its cost, so you know which one to remove or replace.</li>
+    <li><strong>Void lookups, loops, <code>+all</code>, missing or duplicate records</strong>, and terms that never take effect.</li>
+    <li><strong>Honest when it can't finish:</strong> if a lookup fails, the result says <em>could not complete</em> and gives a lower bound. It never reports a pass it couldn't check.</li>
+    <li><strong>Private by default:</strong> uses your own DNS resolver. No dependencies.</li>
+  </ul>
+
+  <h2>Options</h2>
+  <table>
+    <tr><th>Option</th><th>What it does</th></tr>
+    <tr><td><code>--json</code></td><td>Print the full result as JSON</td></tr>
+    <tr><td><code>--server &lt;ip&gt;</code></td><td>Use this DNS server instead of the system one</td></tr>
+    <tr><td><code>--doh [url]</code></td><td>Use DNS-over-HTTPS (Cloudflare by default). The names you look up are sent to that provider</td></tr>
+  </table>
+  <p>Exit code <code>0</code> means no errors, <code>1</code> means errors found and <code>2</code> means it could not complete. That makes it easy to run in CI after a DNS change.</p>
+
+  <h2>Fixing a record that is over the limit</h2>
+  <ol>
+    <li>Look at the <strong>Lookups</strong> column. Start with the biggest numbers.</li>
+    <li>Remove includes for services you no longer send mail through.</li>
+    <li>Replace <code>a</code> and <code>mx</code> with <code>ip4:</code> or <code>ip6:</code> ranges if your own servers rarely change. IP ranges cost no lookups.</li>
+    <li>Move a sending service to a subdomain with its own SPF record, if the provider supports it.</li>
+  </ol>
+
+  <h2>Use it as a library</h2>
+  <pre><code>import { countSpfLookups } from "spf-lookup-counter";
+
+const r = await countSpfLookups("example.com");
+console.log(r.lookups, "of", r.lookupLimit);</code></pre>
+  <p>Full details of what is and isn't counted are in the <a href="https://github.com/syedemazali-alt/spf-lookup-counter#what-is-counted">README</a>.</p>
+
+  <footer>
+    <p>Made by <a href="https://primedevforce.com">Prime Dev Force</a>. Want SPF, DKIM, DMARC, TLS and security headers checked together in your browser? Try the free <a href="https://primedevforce.com/email-security-check">email security check</a>.</p>
+    <p><a href="https://github.com/syedemazali-alt/spf-lookup-counter">Source on GitHub</a> · MIT licence</p>
+  </footer>
+</main>
+</body>
+</html>

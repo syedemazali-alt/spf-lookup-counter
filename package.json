@@ -1,0 +1,48 @@
+{
+  "name": "spf-lookup-counter",
+  "version": "0.1.0",
+  "description": "Count the DNS lookups and void lookups in an SPF record (RFC 7208 limits of 10 and 2) and see which include costs how many.",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "bin": {
+    "spf-lookup-counter": "./bin/spf-lookup-counter.js"
+  },
+  "files": [
+    "src/",
+    "bin/",
+    "index.d.ts"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "keywords": [
+    "spf",
+    "dns",
+    "email",
+    "rfc7208",
+    "permerror",
+    "too-many-dns-lookups",
+    "email-deliverability",
+    "dmarc"
+  ],
+  "author": "Prime Dev Force (https://primedevforce.com)",
+  "license": "MIT",
+  "homepage": "https://syedemazali-alt.github.io/spf-lookup-counter/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/syedemazali-alt/spf-lookup-counter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/syedemazali-alt/spf-lookup-counter/issues"
+  }
+}
